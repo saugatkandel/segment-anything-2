@@ -35,10 +35,10 @@ class SAM2TomogramPredictor(SAM2Base):
         self.clear_non_cond_mem_around_input = clear_non_cond_mem_around_input
         self.clear_non_cond_mem_for_multi_obj = clear_non_cond_mem_for_multi_obj
 
-    def _load_img_as_tensor(self, img_gray, image_size):
-        """Normalizing to [0,1] to start with."""
-        img_norm = (img_gray - img_gray.min()) / (img_gray.max() - img_gray.min()) * 2 - 1
-        img = skimage.transform.resize(img_norm, (image_size, image_size), anti_aliasing=True)
+    def _load_img_as_tensor(self, img, image_size):
+        """Normalizing to [-1,1] to start with."""
+        # img_norm = (img_gray - img_gray.min()) / (img_gray.max() - img_gray.min()) * 2 - 1
+        img = skimage.transform.resize(img, (image_size, image_size), anti_aliasing=True)
         img = np.repeat(img[None, ...], axis=0, repeats=3)
         img = torch.as_tensor(img)
 
@@ -95,8 +95,12 @@ class SAM2TomogramPredictor(SAM2Base):
         offload_state_to_cpu=False,
         async_loading_frames=False,
     ):
-
         """Initialize an inference state."""
+
+        # Start with Normalizing the Tomogram
+        tomogram = (tomogram - tomogram.min()) / (tomogram.max() - tomogram.min())
+        tomogram = tomogram * 2 - 1
+
         compute_device = self.device  # device of the model
         images, video_height, video_width = self.load_grayscale_image_array(
             tomogram,
