@@ -245,6 +245,10 @@ class SAM2AutomaticMaskGenerator:
                 iou_threshold=self.crop_nms_thresh,
             )
             data.filter(keep_by_nms)
+        if self.min_mask_region_area > 0:
+            data = self.postprocess_small_regions(
+                data, self.min_mask_region_area, self.box_nms_thresh
+            )
         data.to_numpy()
         return data
 

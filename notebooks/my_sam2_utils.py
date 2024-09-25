@@ -2,18 +2,28 @@ import matplotlib.pyplot as plt
 import zarr, cv2, torch
 import numpy as np
 
-def get_tomogram(run, voxel_size = 10, algorithm = 'denoised'):
+def get_membrane(run, voxel_size=10, algorithm="denoised", verbose=True):
+    if verbose:
+        print(
+            f"Getting {algorithm} Tomogram with {voxel_size} A voxel size for the associated runID: {run.name}"
+        )
 
-    print(f'Getting {algorithm} Tomogram with {voxel_size} A voxel size for the associated runID: {run.name}')
+    membranes = run.get_segmentations(name="membrane")
+    if len(membranes) > 1:
+        print("Warning: More than one membrane segmentation found. Using the first one.")
+    membrane = membranes[0].numpy()
 
-    tomogram = run.get_voxel_spacing(voxel_size).get_tomogram(algorithm)
+    return membrane
 
-    # Access the data
-    group = zarr.open(tomogram.zarr())
-    arrays = list(group.arrays())
 
-    # Return Volume
-    return arrays[0][1][:]
+def get_tomogram(run, voxel_size=10, algorithm="denoised", verbose=True):
+    if verbose:
+        print(
+            f"Getting {algorithm} Tomogram with {voxel_size} A voxel size for the associated runID: {run.name}"
+        )
+
+    tomogram = run.get_voxel_spacing(voxel_size).get_tomogram(algorithm).numpy()
+    return tomogram
 
 def get_coordinates(run, name = 'lysosome', voxel_size = 10):
 
@@ -47,15 +57,15 @@ def project_tomogram(vol, zSlice = None, deltaZ = None):
     if zSlice is not None:
         # If deltaZ is specified, project over zSlice to zSlice + deltaZ
         if deltaZ is not None:
-            zStart = max(zSlice, 0)
+            zStart = max(zSlice - deltaZ, 0)
             zEnd = min(zSlice + deltaZ, vol.shape[0])  # Ensure we don't exceed the volume size
-            projection = np.sum(vol[zStart:zEnd,], axis=0)  # Sum over the specified slices
+            projection = np.mean(vol[zStart:zEnd,], axis=0)  # Sum over the specified slices
         else:
             # If deltaZ is not specified, project just a single z slice
             projection = vol[zSlice,]
     else:
         # If zSlice is None, project over the entire z-axis
-        projection = np.sum(vol, axis=0)
+        projection = np.mean(vol, axis=0)
 
     # test_data_norm = (test_data - test_data.min()) / (test_data.max() - test_data.min())
     # image = np.repeat(test_data_norm[..., None], 3, axis=2)           

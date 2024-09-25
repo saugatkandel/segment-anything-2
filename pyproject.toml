@@ -48,3 +48,6 @@ extend-ignore = [
 ]
 
 isort.combine-as-imports = true
+
+[tool.pyright]
+exclude = ["*.pkl"]
