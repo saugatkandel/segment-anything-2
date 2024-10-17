@@ -53,6 +53,7 @@ class SAM2AutomaticMaskGenerator:
         output_mode: str = "binary_mask",
         use_m2m: bool = False,
         multimask_output: bool = True,
+        max_rel_box_size: Optional[float] = None,
         **kwargs,
     ) -> None:
         """
@@ -101,6 +102,8 @@ class SAM2AutomaticMaskGenerator:
             memory.
           use_m2m (bool): Whether to add a one step refinement using previous mask predictions.
           multimask_output (bool): Whether to output multimask at each point of the grid.
+          max_rel_box_size (float): If not None, filters out boxes with sides larger than
+            max_rel_box_size times the image size.
         """
 
         assert (points_per_side is None) != (
@@ -148,6 +151,7 @@ class SAM2AutomaticMaskGenerator:
         self.output_mode = output_mode
         self.use_m2m = use_m2m
         self.multimask_output = multimask_output
+        self.max_rel_box_size = max_rel_box_size
 
     @classmethod
     def from_pretrained(cls, model_id: str, **kwargs) -> "SAM2AutomaticMaskGenerator":
@@ -378,6 +382,14 @@ class SAM2AutomaticMaskGenerator:
             data["boxes"], crop_box, [0, 0, orig_w, orig_h]
         )
         if not torch.all(keep_mask):
+            data.filter(keep_mask)
+
+        if self.max_rel_box_size is not None:
+            box_ws = data["boxes"][:, 2] - data["boxes"][:, 0]
+            box_hs = data["boxes"][:, 3] - data["boxes"][:, 1]
+            rel_box_w_cond = box_ws / orig_w < self.max_rel_box_size
+            rel_box_h_cond = box_hs / orig_h < self.max_rel_box_size
+            keep_mask = torch.logical_and(rel_box_w_cond, rel_box_h_cond)
             data.filter(keep_mask)
 
         # Compress to RLE

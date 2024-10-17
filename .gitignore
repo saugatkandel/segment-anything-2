@@ -8,4 +8,4 @@ build/*
 _C.*
 outputs/*
 checkpoints/*.pt
-notebooks/cryosam_outputs/*.pkl
+notebooks/cryosam_*/*.pkl
