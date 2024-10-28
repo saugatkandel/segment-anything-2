@@ -54,6 +54,7 @@ class SAM2AutomaticMaskGenerator:
         use_m2m: bool = False,
         multimask_output: bool = True,
         max_rel_box_size: Optional[float] = None,
+        min_rel_box_size: Optional[float] = None,
         **kwargs,
     ) -> None:
         """
@@ -152,6 +153,7 @@ class SAM2AutomaticMaskGenerator:
         self.use_m2m = use_m2m
         self.multimask_output = multimask_output
         self.max_rel_box_size = max_rel_box_size
+        self.min_rel_box_size = min_rel_box_size
 
     @classmethod
     def from_pretrained(cls, model_id: str, **kwargs) -> "SAM2AutomaticMaskGenerator":
@@ -387,8 +389,13 @@ class SAM2AutomaticMaskGenerator:
         if self.max_rel_box_size is not None:
             box_ws = data["boxes"][:, 2] - data["boxes"][:, 0]
             box_hs = data["boxes"][:, 3] - data["boxes"][:, 1]
-            rel_box_w_cond = box_ws / orig_w < self.max_rel_box_size
-            rel_box_h_cond = box_hs / orig_h < self.max_rel_box_size
+            ws_ratio, hs_ratio = box_ws / orig_w, box_hs / orig_h
+            rel_box_w_cond = torch.logical_and(
+                ws_ratio < self.max_rel_box_size, ws_ratio > self.min_rel_box_size
+            )
+            rel_box_h_cond = torch.logical_and(
+                hs_ratio < self.max_rel_box_size, hs_ratio > self.min_rel_box_size
+            )
             keep_mask = torch.logical_and(rel_box_w_cond, rel_box_h_cond)
             data.filter(keep_mask)
 
